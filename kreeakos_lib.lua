@@ -27,25 +27,6 @@ end
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- Update Global Variables
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
---#region Update Global Variables
-
-client = {}
-
-util.create_tick_handler(function()
-    client.screen_width, client.screen_height = directx.get_client_size()
-    client.player_ped = players.user_ped()
-    client.player_position = ENTITY.GET_ENTITY_COORDS(client.player_ped, false)
-    client.player_vehicle = ped.get_vehicle(client.player_ped, false)
-end)
-
---#endregion Update Global Variables
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- Update Global Variables
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Command Functions
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --#region Command Functions
@@ -192,11 +173,11 @@ transaction = {}
 
 ---Transfers all wallet cash to bank.
 function transaction.deposit_wallet()
-    local wallet_balance = MONEY.NETWORK_GET_VC_WALLET_BALANCE(util.get_char_slot())
+    local wallet_balance = MONEY.NETWORK_GET_VC_WALLET_BALANCE(client.char_slot)
     while wallet_balance ~= 0 do
         if NETSHOPPING.NET_GAMESERVER_TRANSFER_WALLET_TO_BANK_GET_STATUS() ~= 1 then
-            NETSHOPPING.NET_GAMESERVER_TRANSFER_WALLET_TO_BANK(util.get_char_slot(), wallet_balance)
-            wallet_balance = MONEY.NETWORK_GET_VC_WALLET_BALANCE(util.get_char_slot())
+            NETSHOPPING.NET_GAMESERVER_TRANSFER_WALLET_TO_BANK(client.char_slot, wallet_balance)
+            wallet_balance = MONEY.NETWORK_GET_VC_WALLET_BALANCE(client.char_slot)
         end
         util.yield()
     end
@@ -206,6 +187,14 @@ end
 ---@return boolean -- If transaction is active.
 function transaction.is_active()
     return NETSHOPPING.NET_GAMESERVER_TRANSACTION_IN_PROGRESS()
+end
+
+---Get a price from a transaction hash.
+---@param hash integer -- The hash to check.
+---@param category integer -- The category to check.
+---@return number? -- The returned price.
+function transaction.get_price(hash, category)
+    return tonumber(NETSHOPPING.NET_GAMESERVER_GET_PRICE(hash, category, true))
 end
 
 --#endregion Transaction Functions
@@ -227,6 +216,14 @@ function online.in_session()
         return true
     end
     return false
+end
+
+local char_slot_ptr = memory.alloc(4)
+---For getting your character slot.
+---@return number? -- Character slot
+function online:get_char_slot()
+    local _ = STATS.STAT_GET_INT(util.joaat("MPPLY_LAST_MP_CHAR"), char_slot_ptr, 1)
+    return memory.read_int(char_slot_ptr);
 end
 
 --#endregion Online Functions
@@ -270,4 +267,24 @@ end
 --#endregion DirectX Functions
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- DirectX Functions
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Update Global Variables
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--#region Update Global Variables
+
+client = {}
+
+util.create_tick_handler(function()
+    client.screen_width, client.screen_height = directx.get_client_size()
+    client.player_ped = players.user_ped()
+    client.player_position = ENTITY.GET_ENTITY_COORDS(client.player_ped, false)
+    client.player_vehicle = ped.get_vehicle(client.player_ped, false)
+    client.char_slot = online:get_char_slot()
+end)
+
+--#endregion Update Global Variables
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Update Global Variables
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
