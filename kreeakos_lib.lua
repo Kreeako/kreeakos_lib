@@ -1,5 +1,7 @@
 util.require_natives("3095a")
 
+-- if you would like me to add something to this, feel free to reach out to my on discord.
+
 int32_max = 2147483647
 neg_int32_max = -2147483648
 
@@ -221,9 +223,18 @@ end
 local char_slot_ptr = memory.alloc(4)
 ---For getting your character slot.
 ---@return number? -- Character slot
-function online:get_char_slot()
+function online.get_char_slot()
     local _ = STATS.STAT_GET_INT(util.joaat("MPPLY_LAST_MP_CHAR"), char_slot_ptr, 1)
     return memory.read_int(char_slot_ptr);
+end
+
+---For getting a gamer handle from a player ID.
+---@param player_id integer -- The player ID for the player you want to get the gamer handle to.
+---@return boolean | userdata | nil -- The status of the handle, the handle itself, or nil if it couldn't be gotten.
+function online.get_gamer_handle(player_id) -- Sapphire gave this to me, thankies
+    local handle = memory.alloc(13 * 8) -- 13 scrValues
+    NETWORK.NETWORK_HANDLE_FROM_PLAYER(player_id, handle, 13)
+    return NETWORK.NETWORK_IS_HANDLE_VALID(handle, 13) and handle or nil
 end
 
 --#endregion Online Functions
@@ -281,7 +292,7 @@ util.create_tick_handler(function()
     client.player_ped = players.user_ped()
     client.player_position = ENTITY.GET_ENTITY_COORDS(client.player_ped, false)
     client.player_vehicle = ped.get_vehicle(client.player_ped, false)
-    client.char_slot = online:get_char_slot()
+    client.char_slot = online.get_char_slot()
 end)
 
 --#endregion Update Global Variables
