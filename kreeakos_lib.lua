@@ -110,14 +110,64 @@ function utils.first_to_upper(str)
 end
 
 ---To format a number with commas, example: 1000000 gets changed to 1,000,000
----stackoverflow to the rescue
----https://stackoverflow.com/a/10992898
 ---@param number integer -- The number you wish to format.
 ---@return string -- Returns your number as a string formatted with commas.
-function utils.format_integer(number)
+function utils.format_integer(number) -- stackoverflow to the rescue https://stackoverflow.com/a/10992898
     local _, _, minus, int, fraction = tostring(number):find('([-]?)(%d+)([.]?%d*)')
     int = int:reverse():gsub("(%d%d%d)", "%1,")
     return minus .. int:reverse():gsub("^,", "") .. fraction
+end
+
+---To convert an int32 to a hexidecimal.
+---https://stackoverflow.com/a/37797380
+---@param number integer -- The int32 you would like to convert.
+---@return string -- Returns converted hexidecimal as a string.
+function utils.int32_to_hex(number)
+    return string.format("%x", tostring(number * 255))
+end
+
+---For coverting various things into a boolean.
+---@param to_convert any -- The data you would like to convert to a boolean.
+---@return boolean | nil -- Returns your data converted to a boolean, or nil if it could not be converted (i.e. if you gave it anything other than a boolean/number/string).
+function utils.toboolean(to_convert)
+    local data_type = type(to_convert)
+
+    if data_type == "boolean" then
+        return to_convert
+    elseif data_type == "number" then
+        if to_convert ~= 0 then
+            return true
+        end
+    elseif data_type == "string" then
+        to_convert = to_convert:lower()
+        if to_convert == "true" then
+            return true
+        end
+
+        if to_convert == "false" then
+            return false
+        end
+    elseif (data_type == "nil") or data_type == ("table" or data_type == "function") or (data_type == "thread") or (data_type == "userdata") then
+        error("toboolean could not convert " .. data_type .. " :?", 2)
+        return nil
+    end
+    return false
+end
+
+function utils.set_bits(int, ...)
+    local bits = {...}
+    for ind, bit in ipairs(bits) do
+        int = int | (1 << bit)
+    end
+    return int
+end
+
+function utils.bit_test(operand1, operand2)
+    return operand1 & 1 << operand2 ~= 0
+end
+
+function utils.is_bit_set(var, bit)
+    return (var >> bit) and 1
 end
 
 --#endregion Utility Functions
@@ -175,11 +225,14 @@ transaction = {}
 
 ---Transfers all wallet cash to bank.
 function transaction.deposit_wallet()
+    if not online.in_session() then return end
     local wallet_balance = MONEY.NETWORK_GET_VC_WALLET_BALANCE(client.char_slot)
     while wallet_balance ~= 0 do
-        if NETSHOPPING.NET_GAMESERVER_TRANSFER_WALLET_TO_BANK_GET_STATUS() ~= 1 then
-            NETSHOPPING.NET_GAMESERVER_TRANSFER_WALLET_TO_BANK(client.char_slot, wallet_balance)
-            wallet_balance = MONEY.NETWORK_GET_VC_WALLET_BALANCE(client.char_slot)
+        if not transaction.is_active() then
+            if NETSHOPPING.NET_GAMESERVER_TRANSFER_WALLET_TO_BANK_GET_STATUS() ~= 1 then
+                NETSHOPPING.NET_GAMESERVER_TRANSFER_WALLET_TO_BANK(client.char_slot, wallet_balance)
+                wallet_balance = MONEY.NETWORK_GET_VC_WALLET_BALANCE(client.char_slot)
+            end
         end
         util.yield()
     end
@@ -256,8 +309,7 @@ dx = {}
 ---@param padding number -- Pixel padding for the box around the text.
 ---@param scale number -- 1-100 text size.
 ---@param add_drop_shadow boolean -- Specify if you want your text to have a drop shaddow.
----@param ... any -- Specify background color and text color or don't, doesn't matter.
-function dx.draw_text(text, x, y, padding, alignment, scale, add_drop_shadow, ...)
+function dx.draw_text(text, x, y, padding, alignment, scale, add_drop_shadow, ...) -- Has optional argument, for setting background color and text color using tables.
     local text_width, text_height = directx.get_text_size(text, scale / 10)
     if ... == nil then
         background_color = { r = 0, g = 0, b = 0, a = 0 }
@@ -281,6 +333,74 @@ end
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Stat Functions
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--#region Stat Functions
+
+stat = {}
+
+---Gets an integer from a stat.
+---@param stat_name string -- The stat name.
+---@return integer -- Returns integer from stat.
+function stat.read_int(stat_name)
+    local ptr = memory.alloc(4)
+	STATS.STAT_GET_INT(util.joaat(stat_name), ptr, -1)
+	return memory.read_int(ptr)
+end
+
+---Sets a boolean stat.
+---@param stat_name string -- The stat name.
+---@param status boolean -- The value you want to set the stat to.
+function stat.write_bool(stat_name, status)
+	STATS.STAT_SET_BOOL(util.joaat(stat_name), status, true)
+end
+
+---Gets a boolean stat.
+---@param stat_name string -- The stat name.
+function stat.read_bool(stat_name)
+    local ptr = memory.alloc(4)
+	STATS.STAT_GET_BOOL(util.joaat(stat_name), ptr, -1)
+    return memory.read_int(ptr)
+end
+
+---Gets a packed boolean stat.
+---@param packed_stat_bool integer -- The stat to read.
+---@param character_slot integer -- The character slot to read the stat from.
+---@return boolean -- The stat value.
+function stat.read_packed_bool(packed_stat_bool, character_slot)
+    return STATS.GET_PACKED_STAT_BOOL_CODE(packed_stat_bool, character_slot)
+end
+
+---Sets a packed boolean stat.
+---@param packed_stat_bool integer -- The stat to write to.
+---@param bool boolean -- The value to set the stat to.
+---@param character_slot integer -- The character slot to write the stat to.
+function stat.write_packed_bool(packed_stat_bool, bool, character_slot)
+    STATS.SET_PACKED_STAT_BOOL_CODE(packed_stat_bool, bool, character_slot)
+end
+
+---Sets a packed stat integer.
+---@param packed_stat_int integer -- The stat to set.
+---@param value integer -- The value to set the stat to.
+---@param character_slot integer -- The character slot to change the stat on.
+function stat.write_packed_int(packed_stat_int, value, character_slot)
+    STATS.SET_PACKED_STAT_INT_CODE(packed_stat_int, value, character_slot)
+end
+
+---Gets a packed stat integer.
+---@param packed_stat_int integer -- The stat to read.
+---@param character_slot integer -- The character slot to read the stat from.
+---@return integer -- The value of the stat.
+function stat.read_packed_int(packed_stat_int, character_slot)
+    return STATS.GET_PACKED_STAT_INT_CODE(packed_stat_int, character_slot)
+end
+
+--#endregion Stat Functions
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Stat Functions
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Update Global Variables
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --#region Update Global Variables
@@ -292,6 +412,7 @@ util.create_tick_handler(function()
     client.player_ped = players.user_ped()
     client.player_position = ENTITY.GET_ENTITY_COORDS(client.player_ped, false)
     client.player_vehicle = ped.get_vehicle(client.player_ped, false)
+    client.player_vehicle_position = ENTITY.GET_ENTITY_COORDS(ped.get_vehicle(client.player_ped, true), false)
     client.char_slot = online.get_char_slot()
 end)
 
