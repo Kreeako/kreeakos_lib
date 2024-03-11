@@ -154,6 +154,10 @@ function utils.toboolean(to_convert)
     return false
 end
 
+---Used for setting bits.
+---@param int integer --The integer to modify.
+---@param ... any --The bits to modify.
+---@return integer --Returns new int with modified bits.
 function utils.set_bits(int, ...)
     local bits = {...}
     for ind, bit in ipairs(bits) do
@@ -168,6 +172,20 @@ end
 
 function utils.is_bit_set(var, bit)
     return (var >> bit) and 1
+end
+
+---For retrieving filename.
+---@return string --Returns filename.
+function utils.get_filename() --Shameless paste from stackoverflow https://stackoverflow.com/a/48469960/22447005
+    local str = debug.getinfo(2, "S").source
+    return str:match("^.*/(.*).lua$") or str
+end
+
+---For creating a notification in the chat locally.
+---@param text any
+function utils.notify(text)
+    util.BEGIN_TEXT_COMMAND_THEFEED_POST(text)
+    HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(true, false)
 end
 
 --#endregion Utility Functions
@@ -187,6 +205,50 @@ ent = {}
 ---@param position table | userdata --- The coordinates, in table or vector3 format you wish to teleport entity to.
 function ent.teleport(entity, position)
     ENTITY.SET_ENTITY_COORDS(entity, position[1] or position.x, position[2] or position.y, position[3] or position.z, true, false, false, false)
+end
+
+---For loading the model of a given model name or hash.
+---@param model string | integer --The model you wish to load, as a string or a hash.
+---@return boolean --If the model was succefully retrieved, returns true.
+---@return integer | nil --Returns the hash of the given model or nil if was not a valid model.
+function ent.request_model(model)
+    if type(model) == "number" then
+        hash = model
+    elseif type(model) == "string" then
+        hash = util.joaat(model)
+    end
+
+    if STREAMING.IS_MODEL_VALID(hash) then
+        util.request_model(hash, 2000)
+        return true, hash
+    end
+
+    util.log("request_model received invalid model: " .. model)
+    return false, nil
+end
+
+---For spawning a ped.
+---@param ped_type integer
+---@param model string | integer
+---@param position userdata | table
+---@param heading integer
+---@return integer | nil
+function ent.new_ped(ped_type, model, position, heading)
+    local model_valid, hash = ent.request_model(model)
+    if model_valid then
+        local ped = entities.create_ped(ped_type, hash, position, heading)
+
+        if ped == 0 then
+            util.log("ent.new_ped had an oopsie, ped was not created :?")
+        end
+
+        STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(hash)
+        entities.set_can_migrate(ped, false)
+        return ped
+    else
+        util.log("ent.new_ped received invalid model: " .. model)
+        return nil
+    end
 end
 
 --#endregion Entity Functions
@@ -410,6 +472,8 @@ client = {}
 util.create_tick_handler(function()
     client.screen_width, client.screen_height = directx.get_client_size()
     client.player_ped = players.user_ped()
+    client.player = players.user()
+    client.session_host = players.get_host()
     client.player_position = ENTITY.GET_ENTITY_COORDS(client.player_ped, false)
     client.player_vehicle = ped.get_vehicle(client.player_ped, false)
     client.player_vehicle_position = ENTITY.GET_ENTITY_COORDS(ped.get_vehicle(client.player_ped, true), false)
