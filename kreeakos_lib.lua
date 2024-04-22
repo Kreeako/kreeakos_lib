@@ -272,7 +272,7 @@ function ent.new_vehicle(model, position, heading)
         local veh = entities.create_vehicle(hash, position, heading)
 
         STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(hash)
-        entities.set_can_migrate(ped, false)
+        entities.set_can_migrate(veh, false)
         return veh
     else
         return nil
