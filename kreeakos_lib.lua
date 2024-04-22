@@ -188,6 +188,16 @@ function utils.notify(text)
     HUD.END_TEXT_COMMAND_THEFEED_POST_TICKER(true, false)
 end
 
+---For converting a boolean the the strings "on" or "off".
+---@param boolean boolean -- The boolean to convert.
+---@return string -- The string, "on" (true), or "off" (false).
+function util.convert_boolean_to_on_or_off(boolean)
+    if boolean == true then
+        return "on"
+    end
+    return "off"
+end
+
 --#endregion Utility Functions
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Utility Functions
@@ -247,6 +257,24 @@ function ent.new_ped(ped_type, model, position, heading)
         return ped
     else
         util.log("ent.new_ped received invalid model: " .. model)
+        return nil
+    end
+end
+
+---For spawning a vehicle.
+---@param model string | integer
+---@param position userdata | table
+---@param heading integer
+---@return integer | nil
+function ent.new_vehicle(model, position, heading)
+    local model_valid, hash = ent.request_model(model)
+    if model_valid then
+        local veh = entities.create_vehicle(hash, position, heading)
+
+        STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(hash)
+        entities.set_can_migrate(ped, false)
+        return veh
+    else
         return nil
     end
 end
@@ -350,6 +378,19 @@ function online.get_gamer_handle(player_id) -- Sapphire gave this to me, thankie
     local handle = memory.alloc(13 * 8) -- 13 scrValues
     NETWORK.NETWORK_HANDLE_FROM_PLAYER(player_id, handle, 13)
     return NETWORK.NETWORK_IS_HANDLE_VALID(handle, 13) and handle or nil
+end
+
+---Blocks syncs for all players except the one provided.
+---@param player_id integer -- The player ID you want to exclude.
+---@param on_off boolean -- If you want to block or unblock.
+function online.block_syncs_except_pid(player_id, on_off)
+    local state = util.convert_boolean_to_on_or_off(on_off)
+    for _, player in ipairs(players.list(false, true, true)) do
+        if player ~= player_id then
+            local timeout_ref = menu.ref_by_rel_path(menu.player_root(player), "Timeout")
+            menu.trigger_command(timeout_ref, state)
+        end
+    end
 end
 
 --#endregion Online Functions
