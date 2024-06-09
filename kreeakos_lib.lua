@@ -13,33 +13,33 @@ neg_int32_max = -2147483648
 ped = {}
 
 ---For getting the vehicle a ped is in.
----@param ped integer --- Give a ped handle.
+---@param ped_handle integer --- Give a ped handle.
 ---@param include_last_vehicle boolean --- If you want to include the last vehicle the ped was in.
 ---@return integer --- Returns a vehicle handle or -1 if one could not be found.
-function ped.get_vehicle(ped, include_last_vehicle)
-    if include_last_vehicle or PED.IS_PED_IN_ANY_VEHICLE(ped) then
-        return PED.GET_VEHICLE_PED_IS_IN(ped, false)
+function ped.get_vehicle(ped_handle, include_last_vehicle)
+    if include_last_vehicle or PED.IS_PED_IN_ANY_VEHICLE(ped_handle) then
+        return PED.GET_VEHICLE_PED_IS_IN(ped_handle, false)
     end
     return -1
 end
 
 ---For bulk setting ped config flags.
 ---Usage: input a table structured like this: { { flag = ?integer, status = ?boolean }, }
----@param ped number -- The ped you want to set flags on.
+---@param ped_handle number -- The ped you want to set flags on.
 ---@param flags_and_statuses table -- The flags and statuses that you want to set.
-function ped.set_ped_config_flags(ped, flags_and_statuses)
+function ped.set_ped_config_flags(ped_handle, flags_and_statuses)
     for _, flag_and_status in ipairs(flags_and_statuses) do
-        PED.SET_PED_CONFIG_FLAG(ped, flag_and_status.flag, flag_and_status.status)
+        PED.SET_PED_CONFIG_FLAG(ped_handle, flag_and_status.flag, flag_and_status.status)
     end
 end
 
 ---For setting a ped to not react to anything or die.
----@param ped number -- The ped to make into a dummy.
-function ped.set_ped_dummy(ped)
-    ent.set_ped_config_flags(ped, { { flag = 292, status = true }, { flag = 17, status = true }, { flag = 128, status = true }, { flag = 208, status = true } })
-    PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(ped, true)
-    ENTITY.SET_ENTITY_PROOFS(ped, true, true, true, true, true, true, true, true)
-    ENTITY.SET_ENTITY_INVINCIBLE(ped, true)
+---@param ped_handle number -- The ped to make into a dummy.
+function ped.set_ped_dummy(ped_handle)
+    ped.set_ped_config_flags(ped_handle, { { flag = 292, status = true }, { flag = 17, status = true }, { flag = 128, status = true }, { flag = 208, status = true } })
+    PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(ped_handle, true)
+    ENTITY.SET_ENTITY_PROOFS(ped_handle, true, true, true, true, true, true, true, true)
+    ENTITY.SET_ENTITY_INVINCIBLE(ped_handle, true)
 end
 
 --#endregion Ped Functions
