@@ -23,6 +23,25 @@ function ped.get_vehicle(ped, include_last_vehicle)
     return -1
 end
 
+---For bulk setting ped config flags.
+---Usage: input a table structured like this: { { flag = ?integer, status = ?boolean }, }
+---@param ped number -- The ped you want to set flags on.
+---@param flags_and_statuses table -- The flags and statuses that you want to set.
+function ped.set_ped_config_flags(ped, flags_and_statuses)
+    for _, flag_and_status in ipairs(flags_and_statuses) do
+        PED.SET_PED_CONFIG_FLAG(ped, flag_and_status.flag, flag_and_status.status)
+    end
+end
+
+---For setting a ped to not react to anything or die.
+---@param ped number -- The ped to make into a dummy.
+function ped.set_ped_dummy(ped)
+    ent.set_ped_config_flags(ped, { { flag = 292, status = true }, { flag = 17, status = true }, { flag = 128, status = true }, { flag = 208, status = true } })
+    PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(ped, true)
+    ENTITY.SET_ENTITY_PROOFS(ped, true, true, true, true, true, true, true, true)
+    ENTITY.SET_ENTITY_INVINCIBLE(ped, true)
+end
+
 --#endregion Ped Functions
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Ped Functions
