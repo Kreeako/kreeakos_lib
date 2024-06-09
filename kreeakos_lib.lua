@@ -298,6 +298,41 @@ function ent.new_vehicle(model, position, heading)
     end
 end
 
+---Requests control of the provided entity.
+---@param entity number | userdata -- Input entity handle or pointer to request control.
+function ent.request_control(entity)
+    entity = ent.pointer_to_handle(entity)
+    if entity ~= nil then
+        local begin_time = util.current_time_millis()
+        NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(entity)
+        while not NETWORK.NETWORK_HAS_CONTROL_OF_ENTITY(entity) and util.current_time_millis() < begin_time + 1000  do
+            util.yield()
+        end
+    end
+end
+
+---For freezing or unfreezing an entity.
+---@param entity number | userdata -- The entity to freeze or unfreeze.
+---@param frozen boolean -- To set the frozen status.
+function ent.freeze(entity, frozen)
+    ENTITY.FREEZE_ENTITY_POSITION(ent.pointer_to_handle(entity), frozen)
+end
+
+local delete_entity_pointer = memory.alloc(4)
+---For deleting an entity.
+---@param entity number | userdata -- The entity handle or pointer you wish to delete.
+function ent.delete(entity)
+    entity = ent.pointer_to_handle(entity)
+    if ENTITY.DOES_ENTITY_EXIST(entity) then
+        ent.request_control(entity)
+        ent.freeze(entity, true)
+        ENTITY.SET_ENTITY_AS_MISSION_ENTITY(entity, false, true)
+        ENTITY.SET_ENTITY_AS_NO_LONGER_NEEDED(delete_entity_pointer)
+        memory.write_int(delete_entity_pointer, entity)
+        ENTITY.DELETE_ENTITY(delete_entity_pointer)
+    end
+end
+
 --#endregion Entity Functions
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Entity Functions
