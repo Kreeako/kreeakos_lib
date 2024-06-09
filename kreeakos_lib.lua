@@ -298,6 +298,20 @@ function ent.new_vehicle(model, position, heading)
     end
 end
 
+---Automatically converts an entity pointer to a handle for use with natives.
+---@param entity number | userdata -- The entity pointer or handle to convert.
+---@return number -- Returns entity handle.
+function ent.pointer_to_handle(entity)
+    if type(entity) == "number" then
+        entity = entity
+    elseif type(entity) == "userdata" then
+        entity = entities.pointer_to_handle(entity)
+    else
+        util.log("'ent.pointer_to_handle' func received invalid data :?")
+    end
+    return entity
+end
+
 ---Requests control of the provided entity.
 ---@param entity number | userdata -- Input entity handle or pointer to request control.
 function ent.request_control(entity)
